@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/glide-im/glide/pkg/auth"
 	"github.com/glide-im/glide/pkg/auth/jwt_auth"
@@ -235,8 +236,12 @@ func (g *glide) handleMessage() {
 }
 
 func (g *glide) write(i interface{}) error {
-	logger.D("[send] %v", i)
-	return g.conn.WriteJSON(i)
+	bytes, err := json.Marshal(i)
+	if err != nil {
+		return err
+	}
+	logger.D("[send] %s", string(bytes))
+	return g.conn.WriteMessage(websocket.TextMessage, bytes)
 }
 
 func (g *glide) recv() {
@@ -250,8 +255,10 @@ func (g *glide) recv() {
 	g.messages = make(chan *messages.GlideMessage, 10)
 	errs := 0
 	for {
-		var message messages.GlideMessage
-		err := g.conn.ReadJSON(&message)
+		messageType, bytes, err := g.conn.ReadMessage()
+		if messageType != websocket.TextMessage {
+			continue
+		}
 		if err != nil {
 			logger.E("received message error: %v", err)
 			errs++
@@ -260,8 +267,14 @@ func (g *glide) recv() {
 			}
 			continue
 		}
+		var message messages.GlideMessage
+		err = json.Unmarshal(bytes, &message)
+		if err != nil {
+			logger.E("unmarshal message error: %v", err)
+			continue
+		}
 		errs = 0
-		logger.D("[rcv] %s", message)
+		logger.D("[recv] %s", string(bytes))
 		g.messages <- &message
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/glide-im/glide-gui/apis"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
 )
@@ -45,7 +46,15 @@ func (c *Client) init() {
 	})
 }
 
-func (c *Client) LoginByPassword(account, password string) error {
+func (c *Client) LoginByPassword(email, password string) error {
+	resp, err := apis.LoginEmail(email, password)
+	if err != nil {
+		return err
+	}
+	err = c.ws.Auth(resp.Token)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
