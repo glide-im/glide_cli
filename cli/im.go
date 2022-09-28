@@ -1,9 +1,15 @@
-package main
+package cli
 
 import (
 	"github.com/glide-im/glide-gui/apis"
 	"github.com/glide-im/glide/pkg/logger"
 	"github.com/glide-im/glide/pkg/messages"
+)
+
+const (
+	MsgTypeText   = 1
+	MsgTypeImg    = 2
+	MsgTypeRecall = 4
 )
 
 type Client struct {
@@ -44,6 +50,10 @@ func (c *Client) init() {
 
 		}
 	})
+}
+
+func (c *Client) SendTextMessage(to string, content string) (*messages.ChatMessage, error) {
+	return c.ws.SendChatMessage(to, MsgTypeText, content)
 }
 
 func (c *Client) LoginByPassword(email, password string) error {
