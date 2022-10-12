@@ -52,7 +52,7 @@ func (c *Client) init() {
 	})
 }
 
-func (c *Client) SendTextMessage(to string, content string) (*messages.ChatMessage, error) {
+func (c *Client) SendTextMessage(to string, group bool, content string) (*messages.ChatMessage, error) {
 	return c.ws.SendChatMessage(to, MsgTypeText, content)
 }
 

@@ -14,8 +14,9 @@ import (
 )
 
 const (
-	actionChatMessage = "message.chat"
-	actionHeartbeat   = "heartbeat"
+	actionChatMessage  = "message.chat"
+	actionGroupMessage = "message.group"
+	actionHeartbeat    = "heartbeat"
 
 	actionApiAuth     = "api.auth"
 	actionNotifyError = "notify.error"
@@ -41,6 +42,8 @@ type GlideWsClient interface {
 	// SendChatMessage 发送聊天消息
 	// 等待服务器确认收到后返回带服务器返回消息id, 失败时返回错误
 	SendChatMessage(to string, typ int32, content string) (*messages.ChatMessage, error)
+
+	SendGroupMessage(to string, typ int32, content string) (*messages.ChatMessage, error)
 
 	// SendApiMessage 发送 Api 消息
 	// 返回结果, 失败返回错误
@@ -123,21 +126,11 @@ func (g *glide) Send(i interface{}) error {
 }
 
 func (g *glide) SendChatMessage(to string, typ int32, content string) (*messages.ChatMessage, error) {
-	cm := &messages.ChatMessage{
-		CliMid:  uuid.New().String(),
-		From:    g.uid,
-		To:      to,
-		Type:    typ,
-		Content: content,
-		SendAt:  time.Now().Unix(),
-	}
-	err := g.send(to, actionChatMessage, cm)
-	if err != nil {
-		return nil, err
-	}
-	ack := g.waitAck(cm.CliMid)
-	cm.Mid = ack.Mid
-	return cm, nil
+	return g.sendMessage(to, typ, false, content)
+}
+
+func (g *glide) SendGroupMessage(to string, typ int32, content string) (*messages.ChatMessage, error) {
+	return g.sendMessage(to, typ, true, content)
 }
 
 func (g *glide) SendApiMessage(action string, data interface{}) (*messages.Data, error) {
@@ -155,6 +148,28 @@ func (g *glide) SendApiMessage(action string, data interface{}) (*messages.Data,
 	g.seq++
 	resp := g.waitSeq(seq)
 	return resp.Data, nil
+}
+
+func (g *glide) sendMessage(to string, typ int32, group bool, content string) (*messages.ChatMessage, error) {
+	cm := &messages.ChatMessage{
+		CliMid:  uuid.New().String(),
+		From:    g.uid,
+		To:      to,
+		Type:    typ,
+		Content: content,
+		SendAt:  time.Now().Unix(),
+	}
+	var action = actionChatMessage
+	if group {
+		action = actionGroupMessage
+	}
+	err := g.send(to, action, cm)
+	if err != nil {
+		return nil, err
+	}
+	ack := g.waitAck(cm.CliMid)
+	cm.Mid = ack.Mid
+	return cm, nil
 }
 
 func (g *glide) send(to string, action string, data interface{}) error {
